@@ -24,7 +24,7 @@ param(
     $zabbixHost = '10.0.0.2'
 )
 
-Install-Module -Name PS-Zabbix-Host
+Install-Module -Name PS-Zabbix-Host -Force -Confirm:$False
 
 # Zabbix server credentials
 $credentials = New-Object System.Management.Automation.PSCredential(
