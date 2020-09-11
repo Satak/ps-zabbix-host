@@ -4,7 +4,7 @@
 [![PS Gallery][psgallery-badge-dt]][powershell-gallery]
 [![PS Gallery][psgallery-badge-v]][powershell-gallery]
 
-![zabbix logo](https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-48x48.png 'Zabbix logo')
+![alt text](https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-48x48.png 'Zabbix logo')
 
 Powershell module `PS-Zabbix-Host` to install and register Zabbix agent/host on Windows
 
