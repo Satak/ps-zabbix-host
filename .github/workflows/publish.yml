@@ -1,0 +1,16 @@
+name: Publish
+on:
+  push:
+    tags:
+      - 'v*'
+env:
+  POWERSHELL_GALLERY_API_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Publish to PSGallery
+        shell: pwsh
+        run: ./publish.ps1
