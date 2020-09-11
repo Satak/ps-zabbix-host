@@ -109,7 +109,7 @@
       ProjectUri   = 'https://github.com/Satak/ps-zabbix-host'
 
       # A URL to an icon representing this module.
-      # IconUri = ''
+      IconUri      = 'https://raw.githubusercontent.com/Satak/ps-zabbix-host/master/icon/zabbix-icon-192x192.png'
 
       # ReleaseNotes of this module
       ReleaseNotes = 'Zabbix agent and host installer'
