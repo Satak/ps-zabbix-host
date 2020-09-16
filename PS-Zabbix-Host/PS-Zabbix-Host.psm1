@@ -22,6 +22,7 @@ function Install-ZabbixAgent {
   $zabbixAgentInstalled = Get-Service 'Zabbix Agent' -ErrorAction SilentlyContinue
 
   if (!$agentFileExist) {
+    $ProgressPreference = 'SilentlyContinue'
     Write-Verbose 'Downloading Zabbix agent 5.0.3 from www.zabbix.com'
     Invoke-WebRequest -Uri "https://www.zabbix.com/downloads/5.0.3/zabbix_agent-5.0.3-windows-amd64-openssl.msi" -OutFile $outFile
   }
