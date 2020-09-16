@@ -29,7 +29,7 @@ param(
     $password = 'zabbix',
     $zabbixHost = '10.0.0.2'
 )
-
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 Install-Module -Name PS-Zabbix-Host -Force -Confirm:$False
 
 # Zabbix server credentials
