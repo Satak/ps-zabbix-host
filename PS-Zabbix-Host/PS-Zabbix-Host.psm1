@@ -6,34 +6,67 @@ function Install-ZabbixAgent {
         Downloads Zabbix agent and installs it for Windows x64 OS
     .EXAMPLE
         Install-ZabbixAgent
-    .PARAMETER ZabbixServerIPAddress
-        Your Zabbix Server IP Address, defaults to allow all connections
+    .PARAMETER ZabbixServer
+        List of comma delimited IP addresses (or hostnames) of Zabbix servers and Zabbix proxies. Spaces are allowed. Defaults to accept all.
+    .PARAMETER ZabbixServerActive
+        IP:port (or hostname:port) of Zabbix server or Zabbix proxy for active checks. If port is not specified, default port 10051 is used.
+    .PARAMETER ListenPort
+        Agent will listen on this port for connections from the server. Default port: 10050
+    .PARAMETER AgentUrl
+        URL where to download Zabbix Agent. Default url: https://www.zabbix.com/downloads/5.0.3/zabbix_agent-5.0.3-windows-amd64-openssl.msi
+    .PARAMETER LocalAgentInstaller
+        Set full path to local agent installer e.g. C:\Windows\Temp\zabbixAgent.msi
   #>
   [CmdletBinding()]
   param (
     [Parameter()]
-    [string]$ZabbixServerIPAddress = '0.0.0.0/0'
+    [string]$ZabbixServer = '0.0.0.0/0',
+    [Parameter()]
+    [string]$ZabbixServerActive,
+    [Parameter()]
+    [string]$ListenPort = '10050',
+    [Parameter()]
+    [string]$AgentUrl = 'https://www.zabbix.com/downloads/5.0.3/zabbix_agent-5.0.3-windows-amd64-openssl.msi',
+    [Parameter()]
+    [string]$LocalAgentInstaller
   )
 
-  # Download zabbix agent to here C:\Users\<user>\AppData\Local\Temp\2\ZabbixAgent.msi
-  $outFile = Join-Path -Path $env:TEMP -ChildPath "ZabbixAgent.msi"
+  if ($LocalAgentInstaller) {
+    $outFile = $LocalAgentInstaller
+    Write-Verbose "Using local installer from $outFile"
+  }
+  else {
+    # set to download zabbix agent to: C:\Users\<user>\AppData\Local\Temp\2\ZabbixAgent.msi
+    $outFile = Join-Path -Path $env:TEMP -ChildPath "ZabbixAgent.msi"
+    Write-Verbose "Download path set to $outFile"
+  }
+
   $logFile = Join-Path -Path $env:TEMP -ChildPath "ZabbixAgentInstallLog.txt"
   $agentFileExist = Test-Path $outFile
   $zabbixAgentInstalled = Get-Service 'Zabbix Agent' -ErrorAction SilentlyContinue
 
+  Write-Verbose "Pre-install checks: Zabbix agent installer exists: $agentFileExist Agent is already installed: $($zabbixAgentInstalled.name)"
+  $ProgressPreference = 'SilentlyContinue'
+
+  # download zabbix agent if it's not already locally available
   if (!$agentFileExist) {
-    $ProgressPreference = 'SilentlyContinue'
-    Write-Verbose 'Downloading Zabbix agent 5.0.3 from www.zabbix.com'
-    Invoke-WebRequest -Uri "https://www.zabbix.com/downloads/5.0.3/zabbix_agent-5.0.3-windows-amd64-openssl.msi" -OutFile $outFile
+    Write-Verbose "Downloading Zabbix agent from $AgentUrl"
+    Invoke-WebRequest -Uri $AgentUrl -OutFile $outFile
   }
 
+  # install Zabbix agent if it's not installed
   if (!$zabbixAgentInstalled) {
-    Write-Verbose 'Installing Zabbix Agent'
-    Start-Process -FilePath $outFile -ArgumentList "/l*v $logFile SERVER=$ZabbixServerIPAddress /qb!" -PassThru -Wait
+    $zabbixOptions = "SERVER=$($ZabbixServer.Replace(' ','')) ListenPort=$ListenPort"
+    if ($ZabbixServerActive) {
+      $zabbixOptions += " SERVERACTIVE=$($ZabbixServerActive.Replace(' ',''))"
+    }
+    $zabbixAgentArgs = "/l*v $logFile $zabbixOptions /qb!"
+    Write-Verbose "Installing Zabbix Agent with args $zabbixAgentArgs"
+    Start-Process -FilePath $outFile -ArgumentList $zabbixAgentArgs -PassThru -Wait
   }
 
-  $agentIsRunning = Test-NetConnection localhost -Port 10050 -InformationLevel Quiet
-  Write-Verbose "Zabbix agent is downloaded and installed to $($env:computername). Agent is running on port 10050: $agentIsRunning"
+  $agentIsRunning = Test-NetConnection localhost -Port $ListenPort -InformationLevel Quiet
+  Write-Verbose "Zabbix agent is downloaded and installed to $($env:computername). Agent is running on port $($ListenPort): $agentIsRunning"
 }
 
 function Get-LocalIPAddress {
@@ -108,6 +141,18 @@ function New-ZabbixHost {
         Token from New-ZabbixToken cmdlet
     .PARAMETER AgentIPAddress
         Client/Host local IP address that is reachable from Zabbix server (use Get-LocalIPAddress cmdlet)
+    .PARAMETER TemplateId
+        Zabbix template Ids to assign to the host. Accepts one or more values.
+        Template OS Windows by Zabbix agent = 10081 (default)
+        Template OS Windows by Zabbix agent active = 10299
+        Template OS Linux by Zabbix agent = 10001
+        Template OS Linux by Zabbix agent active = 10284
+    .PARAMETER GroupId
+        Zabbix group Ids to assign to the host. Accepts one or more values. Default: 10 = Templates/Operating systems. Alternative: 6 = Virtual machines
+    .PARAMETER AgentPort
+        Zabbix agent port. Default 10050
+    .PARAMETER DNSName
+        Zabbix agent dns name
   #>
   [CmdletBinding()]
   param (
@@ -116,20 +161,17 @@ function New-ZabbixHost {
     [Parameter(Mandatory)]
     [string]$Token,
     [Parameter(Mandatory)]
-    [string]$AgentIPAddress
+    [string]$AgentIPAddress,
+    [string[]]$TemplateId = 10081,
+    [string[]]$GroupId = 10,
+    [string]$AgentPort = "10050",
+    [string]$DNSName = ""
   )
 
   $ctype = "application/json"
   $url = "http://$($ZabbixHost)/api_jsonrpc.php"
-
-  # 10081 = Template OS Windows by Zabbix agent
-  $templateId = 10081
-
-  # 10 = Templates/Operating systems, 6 = Virtual machines
-  $groupId = 10
-
-  # 10050 = default
-  $zabbixPort = "10050"
+  [array]$groups = foreach ($group in $GroupId) { @{groupid = $group } }
+  [array]$templates = foreach ($template in $TemplateId) { @{templateid = $template } }
 
   $createHostBody = @{
     jsonrpc = "2.0"
@@ -143,19 +185,16 @@ function New-ZabbixHost {
           main  = 1
           useip = 1
           ip    = $AgentIPAddress
-          dns   = ""
-          port  = $zabbixPort
+          dns   = $DNSName
+          port  = $AgentPort
         }
       )
-      groups     = @(
-        @{ groupid = $groupId }
-      )
-      templates  = @(
-        @{ templateid = $templateId }
-      )
+      groups     = $groups
+      templates  = $templates
     }
   } | ConvertTo-Json -Depth 3
 
   $res = Invoke-RestMethod -Uri $url -Body $createHostBody -Method Post -ContentType $ctype
   $res.result.hostids
+  Write-Verbose "Zabbix host ($AgentIPAddress) registered to server $ZabbixHost payload: $createHostBody"
 }

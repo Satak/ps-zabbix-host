@@ -8,9 +8,11 @@
 
 Powershell module `PS-Zabbix-Host` to install and register Zabbix agent/host on Windows
 
-| Version | Info            | Date       |
-| ------- | --------------- | ---------- |
-| 0.0.5   | Initial release | 11.09.2020 |
+| Version     | Info                      | Date       |
+| ----------- | ------------------------- | ---------- |
+| 0.0.6       | More options to functions | 18.09.2020 |
+| 0.0.5       | Initial release           | 11.09.2020 |
+| 0.0.1-0.0.4 | pre-release               | 10.09.2020 |
 
 ## Commands
 
